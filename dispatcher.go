@@ -8,94 +8,94 @@ import (
 )
 
 type HashDispatcher struct {
-	mask int
+	mask  int
 	count int
 	table []Dispatcher
 }
 
 func NewHashDispatcher(args ...Dispatcher) Dispatcher {
 	length := len(args)
-	if 0 != (length&(length - 1)) {
+	if 0 != (length & (length - 1)) {
 		panic(errors.New("NewTimingWheel length"))
 	}
 	obj := &HashDispatcher{
-		mask: length - 1,
-		table: make([]Dispatcher,length),
+		mask:  length - 1,
+		table: make([]Dispatcher, length),
 	}
 
-	copy(obj.table,args)
+	copy(obj.table, args)
 	return obj
 }
 
-func(h *HashDispatcher)Start(){
-	for _,v := range h.table {
+func (h *HashDispatcher) Start() {
+	for _, v := range h.table {
 		if nil != v {
 			v.Start()
 		}
 	}
 }
 
-func(h *HashDispatcher)Stop(){
-	for _,v := range h.table {
+func (h *HashDispatcher) Stop() {
+	for _, v := range h.table {
 		if nil != v {
 			v.Stop()
 		}
 	}
 }
 
-func(h *HashDispatcher)Dispatch(fn func()){
+func (h *HashDispatcher) Dispatch(fn func()) {
 	h.count++
-	h.table[h.count & h.mask].Dispatch(fn)
+	h.table[h.count&h.mask].Dispatch(fn)
 }
 
 type QueueDispatcher struct {
-	request chan func()
+	request    chan func()
 	dispatcher Dispatcher
-	length int
+	length     int
 }
 
-func NewQueueDispatcher(length int,dispatcher Dispatcher) Dispatcher {
+func NewQueueDispatcher(length int, dispatcher Dispatcher) Dispatcher {
 	return &QueueDispatcher{
-		length: length,
+		length:     length,
 		dispatcher: dispatcher,
 	}
 }
 
-func(q *QueueDispatcher)Start(){
+func (q *QueueDispatcher) Start() {
 	if nil != q.request {
 		panic(errors.New("once start"))
 	}
 
 	q.dispatcher.Start()
-	q.request = make(chan func(),q.length)
+	q.request = make(chan func(), q.length)
 	go q.run()
 }
 
-func(q *QueueDispatcher)Stop(){
+func (q *QueueDispatcher) Stop() {
 	close(q.request)
 	q.dispatcher.Stop()
 }
 
-func(q *QueueDispatcher)Dispatch(fn func()){
+func (q *QueueDispatcher) Dispatch(fn func()) {
 	q.request <- fn
 }
 
-func(q *QueueDispatcher)run(){
-	for fn := range q.request{
+func (q *QueueDispatcher) run() {
+	for fn := range q.request {
 		q.dispatcher.Dispatch(fn)
 	}
 	q.request = nil
 }
 
-type SimpleDispatcher struct {}
+type SimpleDispatcher struct{}
 
-func NewSimpleDispatcher() Dispatcher{
+func NewSimpleDispatcher() Dispatcher {
 	return &SimpleDispatcher{}
 }
-func(s *SimpleDispatcher)Start(){
+func (s *SimpleDispatcher) Start() {
 }
-func(s *SimpleDispatcher)Stop(){
+func (s *SimpleDispatcher) Stop() {
 }
-func(s *SimpleDispatcher)Dispatch(fn func()){
+func (s *SimpleDispatcher) Dispatch(fn func()) {
 	fn()
 }

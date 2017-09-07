@@ -5,34 +5,34 @@ package timer
 
 type Element struct {
 	next, prev *Element
-	Value interface{}
-	list *List
+	Value      interface{}
+	list       *List
 }
 
 type List struct {
-	root *Element
+	root   *Element
 	length int
 }
 
-func NewList() *List{
+func NewList() *List {
 	return &List{}
 }
 
 func (e *Element) Next() *Element {
-	if p := e.next; nil != e.list && e.list.root != p{
+	if p := e.next; nil != e.list && e.list.root != p {
 		return p
 	}
 	return nil
 }
 
 func (e *Element) Prev() *Element {
-	if p := e.prev; nil != e.list && e.list.root != p{
+	if p := e.prev; nil != e.list && e.list.root != p {
 		return p
 	}
 	return nil
 }
 
-func (e *Element) Remove() *Element{
+func (e *Element) Remove() *Element {
 	if nil != e.list {
 		return e.list.Remove(e)
 	}
@@ -48,7 +48,7 @@ func (l *List) Len() int {
 }
 
 func (l *List) Back() (el *Element) {
-	if nil !=l.root {
+	if nil != l.root {
 		el = l.root.prev
 	}
 	return
@@ -59,13 +59,13 @@ func (l *List) Clear() {
 	l.length = 0
 }
 
-func(l *List)Push(value interface{})(el *Element){
+func (l *List) Push(value interface{}) (el *Element) {
 	el = &Element{
 		Value: value,
-		list: l,
+		list:  l,
 	}
 
-	if nil == l.root{
+	if nil == l.root {
 		el.prev = el
 		el.next = el
 		l.root = el
@@ -80,7 +80,7 @@ func(l *List)Push(value interface{})(el *Element){
 	return
 }
 
-func(l *List)Pop() (el *Element){
+func (l *List) Pop() (el *Element) {
 	if nil == l.root {
 		return
 	}
@@ -98,14 +98,14 @@ func(l *List)Pop() (el *Element){
 	return
 }
 
-func(l *List)Remove(el *Element) *Element{
+func (l *List) Remove(el *Element) *Element {
 	if nil == l.root {
 		return nil
 	}
 
 	el.list = nil
 	l.length--
-	if l.root == el{
+	if l.root == el {
 		if el == el.next {
 			l.root = nil
 			return nil

@@ -7,19 +7,19 @@ type SimpleScheduler struct {
 	dispatcher Dispatcher
 }
 
-func NewSimpleScheduler(dispatcher Dispatcher) Scheduler{
+func NewSimpleScheduler(dispatcher Dispatcher) Scheduler {
 	return &SimpleScheduler{
-		dispatcher:dispatcher,
+		dispatcher: dispatcher,
 	}
 }
-func(s *SimpleScheduler)Start(){
+func (s *SimpleScheduler) Start() {
 	s.dispatcher.Start()
 }
 
-func(s *SimpleScheduler)Stop(){
+func (s *SimpleScheduler) Stop() {
 	s.dispatcher.Stop()
 }
 
-func(s *SimpleScheduler)Schedule(fn func()){
+func (s *SimpleScheduler) Schedule(fn func()) {
 	s.dispatcher.Dispatch(fn)
 }
