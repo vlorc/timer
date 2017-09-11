@@ -23,3 +23,21 @@ func (s *SimpleScheduler) Stop() {
 func (s *SimpleScheduler) Schedule(fn func()) {
 	s.dispatcher.Dispatch(fn)
 }
+
+type EmptyScheduler struct {}
+
+func NewEmptyScheduler() Scheduler {
+	return &EmptyScheduler{}
+}
+
+func (e *EmptyScheduler) Start() {
+
+}
+
+func (e *EmptyScheduler) Stop() {
+
+}
+
+func (e *EmptyScheduler) Schedule(func()) {
+
+}

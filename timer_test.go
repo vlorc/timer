@@ -6,6 +6,7 @@ import (
 )
 
 func Test_NewTimingWheel(t *testing.T) {
+
 	timing := NewTimingWheel(
 		NewSimpleScheduler(NewSimpleDispatcher()),
 		64,
@@ -22,11 +23,20 @@ func Test_NewTimingWheel(t *testing.T) {
 		timing.Cancel(t0)
 	})
 
-	timing.After(26*time.Second, func() {
-		if v := time.Now().Unix() - begin; 26 != v {
-			t.Error("TIME REAL: ", v)
+	timing.After(28*time.Second, func() {
+		if v := time.Now().Unix() - begin; 28 != v {
+			t.Error("After Real: ", v)
 		}
 		timing.Stop()
+	})
+
+	interval := time.Now().Unix()
+	timing.Interval(2 * time.Second, func() {
+		now := time.Now().Unix()
+		if v := now - interval; 2 != v {
+			t.Error("Interval Real: ", v)
+		}
+		interval = now
 	})
 	timing.Wait()
 }
