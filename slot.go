@@ -4,10 +4,10 @@
 package timer
 
 type Timer struct {
-	count int64
-	expires int64
-	id    int64
-	fn    func()
+	count      int64
+	expires    int64
+	id         int64
+	fn         func()
 	next, prev *Timer
 	list       *Slot
 }
@@ -84,7 +84,7 @@ func (l *Slot) Pop() (el *Timer) {
 }
 
 func (l *Slot) Remove(el *Timer) *Timer {
-	if nil == l.root || l != el.list{
+	if nil == l.root || l != el.list {
 		return nil
 	}
 

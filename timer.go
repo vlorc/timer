@@ -28,8 +28,8 @@ type TimingWheel struct {
 	id          int64
 	request_max int
 
-	scheduler Scheduler
-	scheduler_real   Scheduler
+	scheduler      Scheduler
+	scheduler_real Scheduler
 }
 
 type Wheel struct {
@@ -69,18 +69,18 @@ func NewWheel(length int) *Wheel {
 	}
 }
 
-func (w *Wheel) Push(i int,tm *Timer) {
+func (w *Wheel) Push(i int, tm *Timer) {
 	w.Slot(w.pos + i).Push(tm)
 }
 
-func (w *Wheel) Pop(i int) *Timer{
-	if slot := w.slot[(w.pos + i) & w.mask]; nil == slot {
+func (w *Wheel) Pop(i int) *Timer {
+	if slot := w.slot[(w.pos+i)&w.mask]; nil == slot {
 		return slot.Pop()
 	}
 	return nil
 }
 
-func (w *Wheel) Clear(i int) *Slot{
+func (w *Wheel) Clear(i int) *Slot {
 	i &= w.mask
 	slot := w.slot[i]
 	w.slot[i] = nil
@@ -110,11 +110,11 @@ func NewTimingWheel(scheduler Scheduler, request_max int, interval time.Duration
 	}
 
 	obj := &TimingWheel{
-		interval:    int64(interval),
-		wheel:       make([]*Wheel, len(count)),
-		scheduler_real:   scheduler,
-		mask:        length - 1,
-		request_max: request_max,
+		interval:       int64(interval),
+		wheel:          make([]*Wheel, len(count)),
+		scheduler_real: scheduler,
+		mask:           length - 1,
+		request_max:    request_max,
 	}
 	for i, v := range count {
 		obj.wheel[i] = NewWheel(v)
@@ -168,7 +168,7 @@ func (t *TimingWheel) Wait() {
 }
 
 func (t *TimingWheel) After(d time.Duration, fn func()) (tm *Timer) {
-	return t.afterInterval(d,0,fn)
+	return t.afterInterval(d, 0, fn)
 }
 
 func (t *TimingWheel) calc(d int64, v int64) int64 {
@@ -179,15 +179,15 @@ func (t *TimingWheel) calc(d int64, v int64) int64 {
 	return d
 }
 
-func (t *TimingWheel) atInterval(d time.Time,i int64, fn func()) (tm *Timer){
+func (t *TimingWheel) atInterval(d time.Time, i int64, fn func()) (tm *Timer) {
 	if d.IsZero() {
 		return
 	}
 
 	tm = &Timer{
-		count: d.UnixNano(),
+		count:   d.UnixNano(),
 		expires: i,
-		fn:    fn,
+		fn:      fn,
 	}
 	t.request <- Operation{
 		op: OP_AT,
@@ -197,22 +197,22 @@ func (t *TimingWheel) atInterval(d time.Time,i int64, fn func()) (tm *Timer){
 }
 
 func (t *TimingWheel) At(d time.Time, fn func()) (tm *Timer) {
-	return t.atInterval(d,0,fn)
+	return t.atInterval(d, 0, fn)
 }
 
-func (t *TimingWheel) AtInterval(d time.Time,i time.Duration, fn func()) (tm *Timer){
-	return t.atInterval(d,t.calc(int64(i),1),fn)
+func (t *TimingWheel) AtInterval(d time.Time, i time.Duration, fn func()) (tm *Timer) {
+	return t.atInterval(d, t.calc(int64(i), 1), fn)
 }
 
-func (t *TimingWheel) afterInterval(d time.Duration,i int64, fn func()) (tm *Timer){
+func (t *TimingWheel) afterInterval(d time.Duration, i int64, fn func()) (tm *Timer) {
 	if d <= 0 {
 		return
 	}
 
 	tm = &Timer{
-		count: t.calc(int64(d),i),
+		count:   t.calc(int64(d), i),
 		expires: i,
-		fn:    fn,
+		fn:      fn,
 	}
 
 	t.request <- Operation{
@@ -222,12 +222,12 @@ func (t *TimingWheel) afterInterval(d time.Duration,i int64, fn func()) (tm *Tim
 	return
 }
 
-func (t *TimingWheel) AfterInterval(d,i time.Duration, fn func()) (tm *Timer){
-	return t.afterInterval(d,t.calc(int64(i),1),fn)
+func (t *TimingWheel) AfterInterval(d, i time.Duration, fn func()) (tm *Timer) {
+	return t.afterInterval(d, t.calc(int64(i), 1), fn)
 }
 
-func (t *TimingWheel) Interval(i time.Duration, fn func()) (tm *Timer){
-	return t.afterInterval(i,t.calc(int64(i),1),fn)
+func (t *TimingWheel) Interval(i time.Duration, fn func()) (tm *Timer) {
+	return t.afterInterval(i, t.calc(int64(i), 1), fn)
 }
 
 func (t *TimingWheel) Cancel(tm *Timer) {
@@ -271,7 +271,7 @@ func (t *TimingWheel) insertSlot(slot *Slot) {
 }
 
 func (t *TimingWheel) doRequest(op OperationCode, tm *Timer) {
-	if nil == tm{
+	if nil == tm {
 		return
 	}
 	switch op {
@@ -290,7 +290,7 @@ func (t *TimingWheel) doRequest(op OperationCode, tm *Timer) {
 func (t *TimingWheel) insertTimer(tm *Timer) {
 	if tm.count <= 0 {
 		t.scheduler.Schedule(tm.fn)
-		if tm.count = tm.expires; tm.count <= 0{
+		if tm.count = tm.expires; tm.count <= 0 {
 			return
 		}
 	}
@@ -302,7 +302,7 @@ func (t *TimingWheel) insertTimer(tm *Timer) {
 		if 0 == value {
 			value = tm.count >> bit
 			tm.count -= value << bit
-			t.wheel[i].Push(int(value),tm)
+			t.wheel[i].Push(int(value), tm)
 			return
 		}
 		bit += w.bit

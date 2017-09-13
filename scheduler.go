@@ -24,7 +24,7 @@ func (s *SimpleScheduler) Schedule(fn func()) {
 	s.dispatcher.Dispatch(fn)
 }
 
-type EmptyScheduler struct {}
+type EmptyScheduler struct{}
 
 func NewEmptyScheduler() Scheduler {
 	return &EmptyScheduler{}

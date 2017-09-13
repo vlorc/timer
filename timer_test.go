@@ -31,7 +31,7 @@ func Test_NewTimingWheel(t *testing.T) {
 	})
 
 	interval := time.Now().Unix()
-	timing.Interval(2 * time.Second, func() {
+	timing.Interval(2*time.Second, func() {
 		now := time.Now().Unix()
 		if v := now - interval; 2 != v {
 			t.Error("Interval Real: ", v)
