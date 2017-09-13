@@ -17,6 +17,11 @@ const (
 	OP_AT
 )
 
+type Operation struct {
+	op OperationCode
+	tm *Timer
+}
+
 type TimingWheel struct {
 	ticker      *time.Ticker
 	request     chan Operation
@@ -28,79 +33,9 @@ type TimingWheel struct {
 	id          int64
 	request_max int
 
+	push      	func(OperationCode,*Timer)
 	scheduler      Scheduler
 	scheduler_real Scheduler
-}
-
-type Wheel struct {
-	slot []*Slot
-	pos  int
-	mask int
-	bit  uint
-}
-
-type Operation struct {
-	op OperationCode
-	tm *Timer
-}
-
-func popcount(x uint64) uint {
-	const (
-		m1  = 0x5555555555555555
-		m2  = 0x3333333333333333
-		m4  = 0x0f0f0f0f0f0f0f0f
-		h01 = 0x0101010101010101
-	)
-	x -= (x >> 1) & m1
-	x = (x & m2) + ((x >> 2) & m2)
-	x = (x + (x >> 4)) & m4
-	return uint((x * h01) >> 56)
-}
-
-func NewWheel(length int) *Wheel {
-	if 0 != (length & (length - 1)) {
-		panic(errors.New("NewWheel length"))
-	}
-
-	return &Wheel{
-		slot: make([]*Slot, length),
-		mask: length - 1,
-		bit:  popcount(uint64(length - 1)),
-	}
-}
-
-func (w *Wheel) Push(i int, tm *Timer) {
-	w.Slot(w.pos + i).Push(tm)
-}
-
-func (w *Wheel) Pop(i int) *Timer {
-	if slot := w.slot[(w.pos+i)&w.mask]; nil == slot {
-		return slot.Pop()
-	}
-	return nil
-}
-
-func (w *Wheel) Clear(i int) *Slot {
-	i &= w.mask
-	slot := w.slot[i]
-	w.slot[i] = nil
-	return slot
-}
-
-func (w *Wheel) Slot(i int) *Slot {
-	i &= w.mask
-	slot := w.slot[i]
-	if nil == slot {
-		slot = NewSlot()
-		w.slot[i] = slot
-	}
-	return slot
-}
-
-func (w *Wheel) Step() (int, *Slot) {
-	w.pos++
-	i := w.pos & w.mask
-	return i, w.slot[i]
 }
 
 func NewTimingWheel(scheduler Scheduler, request_max int, interval time.Duration, count ...int) *TimingWheel {
@@ -128,20 +63,35 @@ func (t *TimingWheel) Start() {
 		panic(errors.New("once start"))
 	}
 
+	t.start()
+	go t.run()
+}
+
+func (t *TimingWheel) start() {
 	t.scheduler = t.scheduler_real
 	t.quit = make(chan struct{})
 	t.request = make(chan Operation, t.request_max)
 	t.ticker = time.NewTicker(time.Duration(t.interval))
+	t.push = func(op OperationCode,tm *Timer) {
+		t.request <- Operation{
+			op: op,
+			tm: tm,
+		}
+	}
 	t.scheduler.Start()
+}
 
-	go t.run()
+func (t *TimingWheel) stop() {
+	t.push = func(OperationCode,*Timer) {}
+	t.scheduler = NewEmptyScheduler()
+	t.scheduler_real.Stop()
+
+	close(t.quit)
 }
 
 func (t *TimingWheel) Stop() {
 	if nil != t.quit {
-		close(t.quit)
-		t.scheduler = NewEmptyScheduler()
-		t.scheduler_real.Stop()
+		t.stop()
 	}
 }
 
@@ -164,7 +114,7 @@ func (t *TimingWheel) Step() {
 }
 
 func (t *TimingWheel) Wait() {
-	<-t.quit
+	<- t.quit
 }
 
 func (t *TimingWheel) After(d time.Duration, fn func()) (tm *Timer) {
@@ -189,10 +139,7 @@ func (t *TimingWheel) atInterval(d time.Time, i int64, fn func()) (tm *Timer) {
 		expires: i,
 		fn:      fn,
 	}
-	t.request <- Operation{
-		op: OP_AT,
-		tm: tm,
-	}
+	t.push(OP_AT,tm)
 	return tm
 }
 
@@ -215,10 +162,7 @@ func (t *TimingWheel) afterInterval(d time.Duration, i int64, fn func()) (tm *Ti
 		fn:      fn,
 	}
 
-	t.request <- Operation{
-		op: OP_AFTER,
-		tm: tm,
-	}
+	t.push(OP_AFTER,tm)
 	return
 }
 
@@ -231,30 +175,31 @@ func (t *TimingWheel) Interval(i time.Duration, fn func()) (tm *Timer) {
 }
 
 func (t *TimingWheel) Cancel(tm *Timer) {
-	t.request <- Operation{
-		op: OP_REMOVE,
-		tm: tm,
-	}
+	t.push(OP_REMOVE,tm)
 	return
 }
 
+func (t *TimingWheel) destroy() {
+	close(t.request)
+	t.request = nil
+	t.ticker = nil
+	t.quit = nil
+}
+
 func (t *TimingWheel) run() {
+	defer t.destroy()
+
 	for {
 		select {
 		case <-t.ticker.C:
 			t.Step()
 		case <-t.quit:
 			t.ticker.Stop()
-			break
+			return
 		case d := <-t.request:
 			t.doRequest(d.op, d.tm)
 		}
 	}
-
-	close(t.request)
-	t.request = nil
-	t.ticker = nil
-	t.quit = nil
 }
 
 func (t *TimingWheel) insertSlot(slot *Slot) {
