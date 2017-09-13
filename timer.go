@@ -32,16 +32,8 @@ type TimingWheel struct {
 	scheduler_real   Scheduler
 }
 
-type Timer struct {
-	count int64
-	expires int64
-	fn    func()
-	el    *Element
-	id    int64
-}
-
 type Wheel struct {
-	slot []*List
+	slot []*Slot
 	pos  int
 	mask int
 	bit  uint
@@ -71,34 +63,41 @@ func NewWheel(length int) *Wheel {
 	}
 
 	return &Wheel{
-		slot: make([]*List, length),
+		slot: make([]*Slot, length),
 		mask: length - 1,
 		bit:  popcount(uint64(length - 1)),
 	}
 }
 
-func (w *Wheel) Push(i int,tm *Timer) *Element {
-	return w.Slot(w.pos + i).Push(tm)
+func (w *Wheel) Push(i int,tm *Timer) {
+	w.Slot(w.pos + i).Push(tm)
 }
 
-func (w *Wheel) Clear(i int) *List{
+func (w *Wheel) Pop(i int) *Timer{
+	if slot := w.slot[(w.pos + i) & w.mask]; nil == slot {
+		return slot.Pop()
+	}
+	return nil
+}
+
+func (w *Wheel) Clear(i int) *Slot{
 	i &= w.mask
 	slot := w.slot[i]
 	w.slot[i] = nil
 	return slot
 }
 
-func (w *Wheel) Slot(i int) *List {
+func (w *Wheel) Slot(i int) *Slot {
 	i &= w.mask
 	slot := w.slot[i]
 	if nil == slot {
-		slot = NewList()
+		slot = NewSlot()
 		w.slot[i] = slot
 	}
 	return slot
 }
 
-func (w *Wheel) Step() (int, *List) {
+func (w *Wheel) Step() (int, *Slot) {
 	w.pos++
 	i := w.pos & w.mask
 	return i, w.slot[i]
@@ -258,19 +257,26 @@ func (t *TimingWheel) run() {
 	t.quit = nil
 }
 
-func (t *TimingWheel) insertSlot(list *List) {
-	for e := list.Front(); nil != e; e = e.Next() {
-		t.insertTimer(e.Value.(*Timer))
+func (t *TimingWheel) insertSlot(slot *Slot) {
+	node := slot.Front()
+	node.prev.next = nil
+	for {
+		next := node.next
+		t.insertTimer(node)
+		if nil == next {
+			break
+		}
+		node = next
 	}
 }
 
 func (t *TimingWheel) doRequest(op OperationCode, tm *Timer) {
+	if nil == tm{
+		return
+	}
 	switch op {
 	case OP_REMOVE:
-		if nil != tm.el {
-			tm.el.Remove()
-			tm.el = nil
-		}
+		tm.remove()
 	case OP_AT:
 		tm.count = (tm.count - time.Now().UnixNano()) / t.interval
 		fallthrough
@@ -296,7 +302,7 @@ func (t *TimingWheel) insertTimer(tm *Timer) {
 		if 0 == value {
 			value = tm.count >> bit
 			tm.count -= value << bit
-			tm.el = t.wheel[i].Push(int(value),tm)
+			t.wheel[i].Push(int(value),tm)
 			return
 		}
 		bit += w.bit

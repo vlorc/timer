@@ -3,68 +3,52 @@
 
 package timer
 
-type Element struct {
-	next, prev *Element
-	Value      interface{}
-	list       *List
+type Timer struct {
+	count int64
+	expires int64
+	id    int64
+	fn    func()
+	next, prev *Timer
+	list       *Slot
 }
 
-type List struct {
-	root   *Element
+type Slot struct {
+	root   *Timer
 	length int
 }
 
-func NewList() *List {
-	return &List{}
+func NewSlot() *Slot {
+	return &Slot{}
 }
 
-func (e *Element) Next() *Element {
-	if p := e.next; nil != e.list && e.list.root != p {
-		return p
-	}
-	return nil
-}
-
-func (e *Element) Prev() *Element {
-	if p := e.prev; nil != e.list && e.list.root != p {
-		return p
-	}
-	return nil
-}
-
-func (e *Element) Remove() *Element {
+func (e *Timer) remove() *Timer {
 	if nil != e.list {
 		return e.list.Remove(e)
 	}
 	return nil
 }
 
-func (l *List) Front() *Element {
+func (l *Slot) Front() *Timer {
 	return l.root
 }
 
-func (l *List) Len() int {
+func (l *Slot) Len() int {
 	return l.length
 }
 
-func (l *List) Back() (el *Element) {
+func (l *Slot) Back() (el *Timer) {
 	if nil != l.root {
 		el = l.root.prev
 	}
 	return
 }
 
-func (l *List) Clear() {
+func (l *Slot) Clear() {
 	l.root = nil
 	l.length = 0
 }
 
-func (l *List) Push(value interface{}) (el *Element) {
-	el = &Element{
-		Value: value,
-		list:  l,
-	}
-
+func (l *Slot) Push(el *Timer) {
 	if nil == l.root {
 		el.prev = el
 		el.next = el
@@ -76,11 +60,12 @@ func (l *List) Push(value interface{}) (el *Element) {
 		l.root.prev = el
 	}
 
+	el.list = l
 	l.length++
 	return
 }
 
-func (l *List) Pop() (el *Element) {
+func (l *Slot) Pop() (el *Timer) {
 	if nil == l.root {
 		return
 	}
@@ -98,8 +83,8 @@ func (l *List) Pop() (el *Element) {
 	return
 }
 
-func (l *List) Remove(el *Element) *Element {
-	if nil == l.root {
+func (l *Slot) Remove(el *Timer) *Timer {
+	if nil == l.root || l != el.list{
 		return nil
 	}
 
