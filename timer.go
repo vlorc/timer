@@ -38,6 +38,14 @@ type TimingWheel struct {
 	scheduler_real Scheduler
 }
 
+func Default() *TimingWheel {
+	return NewTimingWheel(
+		NewSimpleScheduler(NewQueueDispatcher(256,NewSimpleDispatcher())),
+		256,
+		time.Second,
+		32, 64, 128, 256)
+}
+
 func NewTimingWheel(scheduler Scheduler, request_max int, interval time.Duration, count ...int) *TimingWheel {
 	length := len(count)
 	if 0 != (length & (length - 1)) {
@@ -181,6 +189,7 @@ func (t *TimingWheel) Cancel(tm *Timer) {
 
 func (t *TimingWheel) destroy() {
 	close(t.request)
+	t.ticker.Stop()
 	t.request = nil
 	t.ticker = nil
 	t.quit = nil
@@ -193,11 +202,10 @@ func (t *TimingWheel) run() {
 		select {
 		case <-t.ticker.C:
 			t.Step()
-		case <-t.quit:
-			t.ticker.Stop()
-			return
 		case d := <-t.request:
 			t.doRequest(d.op, d.tm)
+		case <-t.quit:
+			return
 		}
 	}
 }
