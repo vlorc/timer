@@ -16,7 +16,7 @@ type HashDispatcher struct {
 func NewHashDispatcher(args ...Dispatcher) Dispatcher {
 	length := len(args)
 	if 0 != (length & (length - 1)) {
-		panic(errors.New("NewTimingWheel length"))
+		panic(errors.New("NewTimingWheel illegal length"))
 	}
 	obj := &HashDispatcher{
 		mask:  length - 1,

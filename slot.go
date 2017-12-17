@@ -3,15 +3,6 @@
 
 package timer
 
-type Timer struct {
-	count      int64
-	expires    int64
-	id         int64
-	fn         func()
-	next, prev *Timer
-	list       *Slot
-}
-
 type Slot struct {
 	root   *Timer
 	length int
@@ -19,13 +10,6 @@ type Slot struct {
 
 func NewSlot() *Slot {
 	return &Slot{}
-}
-
-func (e *Timer) remove() *Timer {
-	if nil != e.list {
-		return e.list.Remove(e)
-	}
-	return nil
 }
 
 func (l *Slot) Front() *Timer {
